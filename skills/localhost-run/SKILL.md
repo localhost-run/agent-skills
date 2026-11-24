@@ -2,6 +2,23 @@
 name: localhost-run
 description: Put a local dev server on the user's stable public HTTPS domain with localhost.run, for previews, sharing work in progress, testing on phones, or receiving webhooks. Use when the user wants a public URL for something running locally, asks to share or preview their local app, needs a webhook endpoint, wants their app on a particular domain, or mentions localhost.run. Also sets up a new user's localhost.run domain and SSH key, or gives them a temporary address if they'd rather skip setup.
 license: MIT
+compatibility: Runs scripts/tunnel with bash. Needs ssh, ssh-keygen and curl, and network access to localhost.run over SSH (port 22) and to the tunnel's own public URL. macOS, Linux or WSL.
+metadata:
+  openclaw:
+    homepage: https://localhost.run/docs/
+    os: [macos, linux]
+    requires:
+      bins: [bash, ssh, ssh-keygen, curl]
+    envVars:
+      - name: LOCALHOST_RUN_HOST
+        required: false
+        description: For testing the skill against a development tunnel server. Defaults to localhost.run.
+      - name: LOCALHOST_RUN_SSH_PORT
+        required: false
+        description: For testing against a development tunnel server. Defaults to 22.
+      - name: LOCALHOST_RUN_KNOWN_HOSTS
+        required: false
+        description: For testing against a development tunnel server, whose host key differs. Defaults to the pinned scripts/known_hosts.
 ---
 
 # localhost.run tunnels
@@ -44,6 +61,7 @@ Setting up is the normal path, even when the user just asked for "a link": it ta
 | Command | What it does |
 |---|---|
 | `tunnel start <port>` | Connects the saved domain to `localhost:<port>`, replacing any tunnel this skill already has on that domain. Waits until it's live (up to 30 s), then checks the URL. Keeps reconnecting in the background if the connection drops. |
+| `tunnel start <port> --hours N` | The same, but stops by itself after N hours (1 to 24) instead of the default 8. Only when the user asks for longer or shorter. |
 | `tunnel start <port> --requests` | The same, and also records each visitor's request, for `tunnel events`. Only when the task needs it (see "Seeing requests"). |
 | `tunnel start <port> --temporary` | The same on a temporary address that localhost.run picks, with no setup. Only when the user has chosen it (see above). |
 | `tunnel status` | Each domain's state (`connected`, `reconnecting`, `denied`, `key_refused`, `stopped`), its port, and its last message. |
@@ -56,6 +74,8 @@ Setting up is the normal path, even when the user just asked for "a link": it ta
 
 `start` and `status` also check the local port, so they say at once if the app isn't answering.
 
+Every tunnel stops by itself after 8 hours (or `--hours N`), so one can't be left public and forgotten. `status` shows the time left, and the state `expired` once it has stopped.
+
 `start` exit codes: `0` connected; `2` domain denied (the message says why); `3` key refused; `4` no answer yet (it keeps retrying in the background); `5` host key mismatch.
 
 `--domain D` overrides the saved domain for one command. For a temporary tunnel, pass `--temporary` to `stop`, `status`, `events` and `check` too.
@@ -63,7 +83,7 @@ Setting up is the normal path, even when the user just asked for "a link": it ta
 ## How to use it
 
 1. **Start the app first,** and note its port. `start` works without it, but warns that nothing is answering.
-2. **Run `tunnel start <port>`** (with `--domain` if the user named one), then give the user the URL it prints.
+2. **Run `tunnel start <port>`** (with `--domain` if the user named one), then give the user the URL it prints, and say that it stops by itself after 8 hours.
 3. **Point the user at the URL** for whatever they need it for: a webhook setting, a phone, a teammate.
 4. **Run `tunnel stop`** when the work is done, or when the user asks. Don't leave a tunnel running after the task without saying so.
 
@@ -77,6 +97,7 @@ Setting up is the normal path, even when the user just asked for "a link": it ta
 
 ## Rules
 
+- **The background process is the tunnel.** `start` runs one detached supervisor per domain: a bash loop that runs `ssh` to localhost.run and reconnects it if the connection drops, because the tunnel has to outlive the command that started it. It only runs after `start`, gives up for good if the key is refused or the domain denied, stops by itself after 8 hours (or `--hours N`), and `tunnel stop` ends it. Nothing starts it again: there's no cron job, login item or service. `status` shows whether it's running.
 - **It's public.** Anyone with the URL can reach the local app while the tunnel is up. Say so when you start one, and never tunnel something the user hasn't asked to share.
 - **A temporary address can change.** If its tunnel reconnects, it may come back on a new address: `status` shows the current one. Tell the user if it changes.
 - **One tunnel per domain.** localhost.run shares a domain's traffic across every connection holding it. `start` replaces this skill's own tunnel, but a tunnel the user started elsewhere (another terminal or machine) would still take some of the requests. If requests seem to go missing, ask about that.

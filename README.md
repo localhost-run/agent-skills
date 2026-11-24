@@ -146,6 +146,7 @@ skills/localhost-run/
 |---|---|
 | `tunnel start <port>` | Connect your domain to `localhost:<port>`, and keep it connected |
 | `tunnel start <port> --domain D` | The same, on another of your domains |
+| `tunnel start <port> --hours N` | The same, stopping by itself after N hours instead of 8 |
 | `tunnel start <port> --requests` | The same, and record each request, for `tunnel events` |
 | `tunnel start <port> --temporary` | The same, on a temporary address, with no setup |
 | `tunnel status` | Each tunnel's state, its port, and whether the app is answering |
@@ -157,8 +158,9 @@ skills/localhost-run/
 
 ## Safety and privacy
 
-- **Your app is public while the tunnel is up.** Anyone with the URL can reach it. The agent tells you when it starts a tunnel, and stops it when you're done.
+- **Your app is public while the tunnel is up.** Anyone with the URL can reach it. The agent tells you when it starts a tunnel, and stops it when you're done. If it's forgotten, it stops by itself after 8 hours anyway, and nothing ever starts it again on its own.
 - **The skill doesn't touch your SSH keys.** It never reads `~/.ssh`. It makes its own key, `~/.local/share/localhost-run/id_ed25519`, used only for localhost.run, which you can remove from your account at any time. Its private half never leaves your machine, and the claim link carries only the public half, without its comment. It has no passphrase, because your agent can't type one; that's why it's a separate key that unlocks nothing else. The skill has no option for using another key, so it can't be pointed at yours.
+- **Your SSH setup isn't involved.** The skill's `ssh` reads no `ssh_config` (yours or the system's) and doesn't use your ssh-agent, so nothing you've configured for other hosts applies to it. If your network only allows SSH through a proxy set up in `~/.ssh/config`, the skill won't connect.
 - **The connection is checked against a pinned host key.** localhost.run's server key ships with the skill, in `scripts/known_hosts`, and the skill connects only if the server presents that exact key, the first time too. It never writes to your `~/.ssh/known_hosts`.
 - **Visitors' requests are only recorded when needed.** Request paths are written by whoever visits your URL, so they could contain text aimed at your agent. The agent turns recording on only for tasks like webhook debugging. It keeps paths encoded, drops query strings, and treats them as data, never instructions.
 - **Settings:** your domain is saved in `~/.config/localhost-run/agent.conf`. The skill's key is in `~/.local/share/localhost-run/` (never in `~/.config`, which people often sync to dotfiles repos). Tunnel state and recent events are in `~/.local/state/localhost-run/`.
