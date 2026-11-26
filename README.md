@@ -12,12 +12,12 @@ Your coding agent can build and run an app, but it can't show it to anyone. This
 
 - **Nothing to install** apart from the skill. It uses `ssh`, `bash` and `curl`, which your machine already has.
 - **Works with your agent:** Claude Code, Codex, Gemini CLI, OpenCode, Cursor, GitHub Copilot and anything else that reads [Agent Skills](https://agentskills.io).
-- **Sets itself up:** the first time, the skill makes an SSH key just for localhost.run and walks you through claiming a domain. A managed domain takes a minute and needs no DNS setup.
+- **Sets itself up:** the first time, the skill makes an SSH key just for localhost.run and walks you through setting up a domain. One that localhost.run provides takes a minute and needs no DNS setup.
 - **Tells you what's happening:** the agent checks whether your app is answering, reconnects if the connection drops and, when you're working on a webhook, can see each request that arrives.
 
 ## What you need
 
-- A localhost.run account with a stable domain. If you don't have one, the skill links you to claim one, ready set up with its key, at [admin.localhost.run](https://admin.localhost.run).
+- A localhost.run account with a stable domain. If you don't have one, the skill links you to set one up at [admin.localhost.run](https://admin.localhost.run).
 - macOS, Linux or WSL, with `ssh`, `bash` and `curl`.
 
 ## Choosing your domain
@@ -34,9 +34,9 @@ The skill connects your app to **your** domain, so the address is one you know i
   > Use api-dev.example.com for localhost.run from now on.
 
   The agent checks that the domain is on your account and saves it (`tunnel verify --domain …`).
-- **A domain you don't have yet:** ask for one, and the agent links you to claim a managed domain, which takes a minute and needs no DNS. To use your own domain, such as `dev.example.com`, set it up in [the admin site](https://admin.localhost.run) first ([how](https://localhost.run/docs/custom-domains)), then name it as above.
+- **A domain you don't have yet:** ask for one, and the agent links you to [set one up](https://admin.localhost.run/domains/add): one localhost.run provides takes a minute and needs no DNS. Or name your own domain, such as `dev.example.com`: if it isn't set up yet, the agent gives you the link to the page that sets it up, including the DNS record it needs ([how custom domains work](https://localhost.run/docs/custom-domains)).
 
-A domain only works with a key on the same account. If the agent says a domain was denied, it shows you localhost.run's reason: usually the domain is misspelled, not set up yet, or on another account.
+A domain only works with a key on the same account. If something isn't ready, localhost.run says why and usually gives a link to the page in your account that fixes it: the agent passes it on, waits for you, and connects again.
 
 **Just need a quick link?** Tell the agent you want a temporary address, and it skips setup: `tunnel start <port> --temporary` gives you a free address picked by localhost.run. Free addresses change periodically to prevent abuse, so these links stop working after a while. That's fine for a quick look, but not for something you'll bookmark, share, or give to a webhook. Set up a stable domain whenever you're ready, and the address stays the same.
 
@@ -71,15 +71,19 @@ Every example works the same way in any agent: just ask. The prompts below are o
 >
 > **You:** Yes.
 >
-> **Agent:** I've made an SSH key just for localhost.run, in `~/.local/share/localhost-run/`. It can't be used for anything else, and you can remove it from your account any time. Do you already have a domain on localhost.run?
+> **Agent:** I've made an SSH key just for localhost.run, in `~/.local/share/localhost-run/`. It can't be used for anything else, and you can remove it from your account any time. Do you already have a domain you'd like to use, either your own or one on your localhost.run account? Or shall I give you a link to set one up?
 >
-> **You:** No.
+> **You:** Set one up.
 >
-> **Agent:** What name would you like? … Open this link to claim it: `https://admin.localhost.run/claim?managed=true&name=…`. It adds the key to your account too. Tell me your domain when you're done.
+> **Agent:** Open https://admin.localhost.run/domains/add, sign in or create an account, and pick a domain. Tell me the domain when it's set up. After that there's one more link, to connect this skill to your account.
 >
 > **You:** Done, it's `…`.
 >
-> **Agent:** Verified: the key signs in and the domain is yours. Saved.
+> **Agent:** Open this link to connect this skill to your localhost.run account, and check the page shows the fingerprint `SHA256:…` before you approve: `https://admin.localhost.run/ssh-keys/add?key=…`. Tell me when you've done it.
+>
+> **You:** Done.
+>
+> **Agent:** Connected: the key signs in and the domain is yours. Saved.
 
 ### Putting it on a specific domain
 
@@ -153,13 +157,13 @@ skills/localhost-run/
 | `tunnel check` | Is the app answering, locally and through your URL? |
 | `tunnel events [N]` | Recent events, including each request and its status if `--requests` is on |
 | `tunnel stop` | Disconnect |
-| `tunnel verify --domain D` | Check a domain works with the key, and save it as the default |
-| `tunnel key` / `claim-url <name>` | Setup helpers: the skill's own key, and the link to claim a domain with it |
+| `tunnel verify --domain D` | Connect to a domain with the key and save it as the default, or show the link that fixes it |
+| `tunnel key` | The skill's own SSH key: creates it the first time, then shows it |
 
 ## Safety and privacy
 
 - **Your app is public while the tunnel is up.** Anyone with the URL can reach it. The agent tells you when it starts a tunnel, and stops it when you're done. If it's forgotten, it stops by itself after 8 hours anyway, and nothing ever starts it again on its own.
-- **The skill doesn't touch your SSH keys.** It never reads `~/.ssh`. It makes its own key, `~/.local/share/localhost-run/id_ed25519`, used only for localhost.run, which you can remove from your account at any time. Its private half never leaves your machine, and the claim link carries only the public half, without its comment. It has no passphrase, because your agent can't type one; that's why it's a separate key that unlocks nothing else. The skill has no option for using another key, so it can't be pointed at yours.
+- **The skill doesn't touch your SSH keys.** It never reads `~/.ssh`. It makes its own key, `~/.local/share/localhost-run/id_ed25519`, used only for localhost.run, which you can remove from your account at any time. Its private half never leaves your machine. To add it to your account, localhost.run gives the agent a link that adds the key once you sign in, check its fingerprint and approve. The agent only shows you links to admin.localhost.run, and only a key link for its own key's fingerprint. It has no passphrase, because your agent can't type one; that's why it's a separate key that unlocks nothing else. The skill has no option for using another key, so it can't be pointed at yours.
 - **Your SSH setup isn't involved.** The skill's `ssh` reads no `ssh_config` (yours or the system's) and doesn't use your ssh-agent, so nothing you've configured for other hosts applies to it. If your network only allows SSH through a proxy set up in `~/.ssh/config`, the skill won't connect.
 - **The connection is checked against a pinned host key.** localhost.run's server key ships with the skill, in `scripts/known_hosts`, and the skill connects only if the server presents that exact key, the first time too. It never writes to your `~/.ssh/known_hosts`.
 - **Visitors' requests are only recorded when needed.** Request paths are written by whoever visits your URL, so they could contain text aimed at your agent. The agent turns recording on only for tasks like webhook debugging. It keeps paths encoded, drops query strings, and treats them as data, never instructions.
